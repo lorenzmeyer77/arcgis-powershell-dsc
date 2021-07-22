@@ -64,7 +64,7 @@ Configuration ArcGISRasterDataStoreItem
             Ensure = "Present"
             SiteAdministrator = $ServerPrimarySiteAdminCredential
             DataStoreType = "RasterStore"
-            DataStorePath = if($ExternalFileSharePath){ $ExternalFileSharePath }else{ "\\$($env:ComputerName)\$($FileShareName)" }
+            DataStorePath = if($ExternalFileSharePath){ $ExternalFileSharePath }else{ "\\$($Node.NodeName)\$($FileShareName)" }
         }
     }
 }
