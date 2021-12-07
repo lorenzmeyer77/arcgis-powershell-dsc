@@ -187,8 +187,28 @@ function Set-TargetResource
                         }
                         $err = $p.StandardError.ReadToEnd()
                         
-                        if($p.ExitCode -eq 0) {                    
-                            Write-Verbose "Initialized correctly indicating successful desktop initialization"
+                        if($p.ExitCode -eq 0) {
+                            # SBB AG: Check again for correct login user. Sometimes the Utiliy fails to get domain users. See Esri Case #02947471 - ArcGIS Server 10.9.1 und 10.9.0 - ServerConfigurationUtilityUI.exe findet Domain Account nicht 
+                            $WindowsService = (Get-CimInstance Win32_Service -filter "Name='$Name'" | Select-Object -First 1)
+                            if($null -ne $WindowsService){
+                                $CurrentRunAsAccount = $WindowsService.StartName
+                                if($CurrentRunAsAccount -ne $ExpectedRunAsUserName){
+                                    $StartName = if(-not($IsMSAAccount) -and -not($IsDomainAccount)){ ".\$($ExpectedRunAsUserName)" }else{ $ExpectedRunAsUserName }
+                                    $ChangeObject = @{StartName=$StartName;}
+                                    if(-not($IsMSAAccount)){
+                                        $ChangeObject += @{StartPassword=$RunAsAccount.GetNetworkCredential().Password;}
+                                    }
+            
+                                    Write-Verbose "Updating Service Account for service $Name."
+                                    $ReturnValue = ($WindowsService | Invoke-CimMethod -Name Change -Arguments $ChangeObject).ReturnValue
+                                    if($ReturnValue -eq 0){
+                                        Write-Verbose "Service Account Change Operation for Service $Name successful."                                    
+                                    }
+                                } else {
+                                    Write-Verbose "Initialized correctly indicating successful desktop initialization"
+                                }
+                            }
+                            
                         }else {
                             throw "Service Account Update did not succeed. Process exit code:- $($p.ExitCode). Error - $err"
                         }
